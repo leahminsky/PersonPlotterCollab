@@ -14,8 +14,6 @@ from pyaxidraw import axidraw
 
 #################################################
 
-#modes --> first screen physically moves axidraw to origin, waiting screen 
-#until ready to go
 canvasWidth = 880
 canvasHeight = 680
 mouseScaleFactor = 85
@@ -25,59 +23,58 @@ margin = 5
 #intialize axidraw for interactive mode
 ad = axidraw.AxiDraw()
 ad.interactive()                
-ad.options.model = 2
-# 
-# should i do this when i align the axidraw in the waiting screen?                
+ad.options.model = 2               
 connected = ad.connect()         
 if not connected:
     print(axidraw is not connected)
     sys.exit
 
-ad.penup()
-
 #################### INITIAL WAIT SCREEN ######################
 
-# def intitialWaitScreenMode_redrawAll(app, canvas):
-#     makeBackground(color, width, height, etc)
-#     makeButton("start")
-# #maybe don't need this screen?
-
-# def initialWaitScreenMode_mousePressed(app, event):
-#     if button.mousePressed()?
-
-# while(mode=="home screen"):
-#     makeBackground(color, width, height, etc)
-#     button = makeButton("start")
-#     if (mousePressed and within button):
-#         mode = "waiting screen"
-
-######################################################
-
-# def intitialWaitScreenMode_redrawAll(app, canvas):
-#     makeBackground(color, width, height, etc)
-#     makeButton("start")
-
-# def intitialWaitScreenMode_redrawAll(app, canvas):
-#     while(mode == "waiting screen" and not axiReady):
-#         makeBackground(color, width, height, etc)
-#         screenMessage = "Aligning plotter..."
-#         axiReady = False
-#         os.system("axicli -m align")
-#         print("motors unlocked")
+# def splashScreenMode_redrawAll(app, canvas):
+#     axiReady = False
+#     if (axiReady):
+#         canvas.create_rectangle(0, 0, canvasWidth, canvasHeight, fill="red")
+#         canvas.create_text(app.width/2, 150, text="Aligning plotter...", 
+#                                                             fill="white")
+# #         os.system("axicli -m align")
 #         ad.penup()
-#         print("pen in up position")
 #         ad.moveto(0,0)
-#         print("pen in home position")
 #         axiReady = True
-#         if (axiReady):
-#             screenMessage = "Plotter is ready!"
-#             #show "Go!" button 
-#             if (mousePressed and in goButton):
-#                 mode = "drawing app"
+# #         print("pen in up position")
+# #         print("motors unlocked")
+# #         print("pen in home position")
+#     else:
+#         cX = canvasWidth/2
+#         cY = canvasHeight/2
+#         canvas.create_rectangle(0, 0, canvasWidth, canvasHeight, fill="white")
+#         canvas.create_rectangle(cX-20, cY+20, cX-20, cY+20, fill="green")
+#         canvas.create_text(app.width/2, 150, text="Start!", 
+#                                                         fill="white")
+# def splashScreenMode_buttonBounds(x, y):
+#     cX = canvasWidth/2
+#     cY = canvasHeight/2
+#     if (x > cX-20 and x < cX+20 and y < cY-20 and y > cY+20):
+#         inBounds = True
+#     inBounds = False
+#     return inBounds
+
+# def splashScreenMode_mousePressed(app, event):
+#     startApp = False
+#     if splashScreenMode_buttonBounds(event.x, event.y):
+#         app.mode = ""
+
+#################### DRAW MODE SCREEN ######################
 
 def inBounds(x, y):
     if (x > 0 and x < (canvasWidth-margin) and y > 0 
                         and y < (canvasHeight-margin)):
+        return True
+    return False
+
+def inButton(x, y):
+    if (x > canvasWidth-50 and x < 50 and y > canvasWidth-20 
+                        and y < 20):
         return True
     return False
 
@@ -96,18 +93,84 @@ def constrainResponsePoint(newPoint):
     y = newPoint[1] / mouseScaleFactor
     return x, y
 
-#function for checking what lines are already there?update actual canvas 
-#with lines instead of just drawing over?
+##################################################################
+
+def getAllxValues(originalLine):
+    xValues = [ ]
+    for coords in originalLine:
+        xValues.append(originalLine[coords[0]])
+    return xValues
+
+def getAllyValues(originalLine):
+    yValues = [ ]
+    for coords in originalLine:
+        yValues.append(originalLine[coords[1]])
+    return yValues
+
+def findBounds(originalLine):
+    #find min x and y, find max x and y
+    minX = min(getAllxValues(originalLine))
+    minY = min(getAllyValues(originalLine))
+    maxX = max(getAllxValues(originalLine))
+    maxY = max(getAllyValues(originalLine))
+    return minX, minY, maxX, maxY
+
+def distanceHelper(lastPoint, currPoint):
+    x1, y1 = lastPoint #do i have to do lastPoint[0], lastPoint[1]?
+    x2, y2 = currPoint #do i have to do currPoint[0], currPoint[1]?
+    return math.sqrt( ((x1-x2)**2)((y1-y2)**2) )
+
+def avgDistBtwnPoints(originalLine):
+    oldAvg = 0
+    currAvg = 0
+    bestAvg = 0
+    for i in range(len(originalLine)):
+        currPoint = originalLine[i]
+        lastPoint = originalLine[i-1]
+        currAvg = distanceHelper(lastPoint, currPoint)
+        bestAvg = (currAvg + oldAvg) / 2
+        oldAvg = currAvg
+    return bestAvg
+
+def isClosedShape(originalLine):
+    closedShape = False
+    startPoint = originalLine[0]
+    endPoint = originalLine[-1]
+    if  (distanceHelper(startPoint, endPoint) < 
+                                avgDistBtwnPoints(originalLine)):
+        closedShape = True
+    return closedShape
+
+###############################################################################
+
+def randResponse():
+    # responseIds = 2 #this will be passed in later
+    # numResponses = len(responseIds)
+    randNum = random.random()
+    if (randNum < 0.6):
+        return 0
+    return 1
+
+#  def changeShapeSize():
+#     #inherits slider from gui
+#     sizeValue = getSliderValue()
+#     return sizeValue
+    
 
 def appStarted(app):
+    app.mode = 'splashScreenMode'
 
     app.strokes = [ ]
     app.newResponse = None
     app.transformed = [ ]
+    app.alreadyDrawn = False
 
     app.userIsDrawing= False
     app.firstMove = True
     app.lineDrawn = False
+
+    app.makeSquare = False
+    app.dottedLine = False
 
     
 
@@ -117,8 +180,14 @@ def mousePressed(app, event):
     # app.userIsDrawing = True
 
     if inBounds(event.x,event.y):
-        newPoint = Point(coord=[event.x, event.y], color="black", size=8)
-    app.strokes.append(newPoint)
+        if(app.makeSquare):
+            newSquare = Square(coord=[event.x, event.y], color="black",
+                                                    size=changeShapeSize())
+            app.strokes.append(newSquare)
+            app.makeSquare = False
+        else:
+            newPoint = Point(coord=[event.x, event.y], color="black", size=8)
+            app.strokes.append(newPoint)
 
     app.userIsDrawing = True
     
@@ -126,26 +195,32 @@ def mouseReleased(app, event):
     app.userIsDrawing = False
     app.firstMove = True
     if not app.userIsDrawing and app.firstMove:
-
         if isinstance(app.strokes[-1], Line):
-            app.newResponse = Response(1, app.strokes[-1].getCoords())
-            app.transformed = app.newResponse.doToAllCoords()
+            if (isClosedShape(app.strokes[-1])):
+                app.newResponse = Response(0, app.strokes[-1])
+                app.transformed = app.newResponse.fillIntersections()
+            else:
+                app.newResponse = Response(randResponse(), app.strokes[-1])
+                app.transformed = app.newResponse.doToAllCoords()
+
             app.transformed = constrainResponseLine(app.transformed)
             firstX, firstY = app.transformed[0]
-            # ad.moveto(firstX, firstY)
+
+        elif isinstance(app.strokes[-1], Square):
+            app.newResponse = Response(1, app.strokes[-1])#.getCoords()
+            app.transformed = app.newResponse.drawSquare(50)
+            app.transformed = constrainResponseLine(app.transformed)
+            firstX, firstY = app.transformed[0]
         else:
-            app.newResponse = Response(1, app.strokes[-1].getCoord())
+            app.newResponse = Response(1, app.strokes[-1])#.getCoords()
             app.transformed = app.newResponse.doToAllCoords()
             app.transformed = constrainResponsePoint(app.transformed)
             firstX, firstY = app.transformed
-        #print((firstX, firstY))
         ad.moveto(firstX, firstY)
         app.firstMove = False
-    #possible switch bool flag here for userisdrawing
 
 
-def mouseDragged(app, event):
-    # print(event.x)    
+def mouseDragged(app, event):   
     if app.userIsDrawing:
         if (len(app.strokes) == 0 or not isinstance(app.strokes[-1], Line)):
             # create new line
@@ -162,74 +237,94 @@ def mouseDragged(app, event):
                 lastStroke.addPoint(event)
 
 def keyPressed(app, event):
-    if event.key == 'h':
+    if event.key == 'e':
         ad.penup()
         ad.moveto(0,0)      #moves back to origin before closing app
         ad.disconnect()
 
+    if event.key == 's':
+        app.makeSquare = True
+    
+
+
 def doResponse(app):
     if not app.userIsDrawing:
         if not app.firstMove:
-            ad.pendown()
-            if isinstance(app.strokes[-1], Line):
-                for coord in range(len(app.transformed)):
-                    if coord == len(app.transformed)-1:
-                        ad.penup()
-                        app.lineDrawn = True
-                        continue
-                    x, y = app.transformed[coord]
-                    ad.lineto(x, y)
-                    app.lineDrawn = False
-            else:
-                x, y = app.transformed
-                ad.lineto(x, y)
-                app.lineDrawn = True
+            if (app.newResponse.alreadyDrawn == False):
+                ad.pendown()
+                if isinstance(app.strokes[-1], Line):
+                    if (isClosedShape(app.strokes[-1])):
+                        for coord in range(len(app.transformed)-1):
+                            if coord == (len(app.transformed)):
+                                app.newResponse.alreadyDrawn = True
+                                ad.penup()
+                            else:
+                                if (coord % 2 != 0):
+                                    x, y = app.transformed[coord]
+                                    ad.moveto(x, y)
+                                x, y = app.transformed[coord]
+                                ad.lineto(x, y)
 
-def doResponseOnce(app):
-    if (not app.lineDrawn):
-        doResponse(app)
+
+                    if (app.newResponse.responseId == 1):
+                        #why is this not working, should not loop over for
+                        #the second time
+                        for coord in range(len(app.transformed)-1):
+                            if coord == (len(app.transformed)):
+                                app.newResponse.alreadyDrawn = True
+                                ad.penup()
+                            else:
+                                if (coord % 2 != 0):
+                                    x, y = app.transformed[coord]
+                                    ad.moveto(x, y)
+                                x, y = app.transformed[coord]
+                                ad.lineto(x, y)
+
+                    for coord in range(len(app.transformed)):
+                        if coord == len(app.transformed):
+                            ad.penup()
+                            continue
+                        x, y = app.transformed[coord]
+                        ad.lineto(x, y)
+                        app.newResponse.alreadyDrawn = True
+
+                elif isinstance(app.strokes[-1], Square):
+                    for coord in range(len(app.transformed)):
+                        if coord == len(app.transformed):
+                            ad.penup()
+                            continue
+                        x, y = app.transformed[coord]
+                        ad.lineto(x, y)
+                        app.newResponse.alreadyDrawn = True
+                else:
+                    x, y = app.transformed
+                    ad.lineto(x, y)
         
 
-
+        
 ############################################################################
-#import responses as response and then do 
-# def listResponses(response):
-#     listOfResponses = [ ]
-#     for response in range(len(responses)):
-#         listOfResponses.append("response." + responses[response])
-#     return listOfResponses
-
-# for i in range(0, len(responses)):
-#     currResponse = random.choice(listOfResponses(response))
-
-# #OR
-
 # responseIds = {
-#             0: mirrorOverCenter,
-#             1: diffGrowth,
+#             0: mirror,
+#             1: dashedLine,
 #             2: scribblyLine,
 #             3: jaggedScribble,
-#             4: filledShape
 #         }
-# #change this, it was first meant for if responseIds was a list
 # def randNum(responseIds):
 #     numResponses = len(responseIds)
 #     randNum = random.randint(0, numResponses)
 #     return randNum
 
-# def randomResponse(responses):
-#     shuffledList = random.shuffle(responses)
-#     currResponse = shuffledList[randNum(responses)]
-#     return currResponse
-
 ############################################################################
 
 def redrawAll(app, canvas):
-    # print(app.strokes)
-    # print(app.mouseDrag, app.mousePress)
+    canvas.create_rectangle(0, 0, canvasWidth, canvasHeight, fill="#daf0e6")
+    canvas.create_text(app.width/2, 20, text="e to exit, s for square", 
+                                                            fill="green")
 
     for drawStroke in app.strokes:
         drawStroke.redraw(canvas)
+
+    doResponse(app)
 
 def runAxi():
     runApp(width = canvasWidth, height = canvasHeight)
