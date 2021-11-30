@@ -118,7 +118,7 @@ def findBounds(originalLine):
 def distanceHelper(lastPoint, currPoint):
     x1, y1 = lastPoint #do i have to do lastPoint[0], lastPoint[1]?
     x2, y2 = currPoint #do i have to do currPoint[0], currPoint[1]?
-    return math.sqrt( ((x1-x2)**2)((y1-y2)**2) )
+    return math.sqrt( ((x1-x2)**2)+((y1-y2)**2) )
 
 def avgDistBtwnPoints(originalLine):
     oldAvg = 0
@@ -147,9 +147,9 @@ def randResponse():
     # responseIds = 2 #this will be passed in later
     # numResponses = len(responseIds)
     randNum = random.random()
-    if (randNum < 0.6):
+    if (randNum < 0.5):
         return 0
-    return 1
+    return 2
 
 #  def changeShapeSize():
 #     #inherits slider from gui
@@ -158,7 +158,7 @@ def randResponse():
     
 
 def appStarted(app):
-    app.mode = 'splashScreenMode'
+    # app.mode = 'splashScreenMode'
 
     app.strokes = [ ]
     app.newResponse = None
@@ -182,7 +182,7 @@ def mousePressed(app, event):
     if inBounds(event.x,event.y):
         if(app.makeSquare):
             newSquare = Square(coord=[event.x, event.y], color="black",
-                                                    size=changeShapeSize())
+                                                    size=10)
             app.strokes.append(newSquare)
             app.makeSquare = False
         else:
@@ -196,23 +196,24 @@ def mouseReleased(app, event):
     app.firstMove = True
     if not app.userIsDrawing and app.firstMove:
         if isinstance(app.strokes[-1], Line):
-            if (isClosedShape(app.strokes[-1])):
-                app.newResponse = Response(0, app.strokes[-1])
+            if (isClosedShape(app.strokes[-1].getCoords())):
+                app.newResponse = Response(1, app.strokes[-1].getCoords())
                 app.transformed = app.newResponse.fillIntersections()
             else:
-                app.newResponse = Response(randResponse(), app.strokes[-1])
+                app.newResponse = Response(randResponse(), 
+                                                app.strokes[-1].getCoords())
                 app.transformed = app.newResponse.doToAllCoords()
 
             app.transformed = constrainResponseLine(app.transformed)
             firstX, firstY = app.transformed[0]
 
         elif isinstance(app.strokes[-1], Square):
-            app.newResponse = Response(1, app.strokes[-1])#.getCoords()
+            app.newResponse = Response(0, app.strokes[-1].getCoord())
             app.transformed = app.newResponse.drawSquare(50)
             app.transformed = constrainResponseLine(app.transformed)
             firstX, firstY = app.transformed[0]
         else:
-            app.newResponse = Response(1, app.strokes[-1])#.getCoords()
+            app.newResponse = Response(0, app.strokes[-1].getCoord())
             app.transformed = app.newResponse.doToAllCoords()
             app.transformed = constrainResponsePoint(app.transformed)
             firstX, firstY = app.transformed
@@ -246,47 +247,51 @@ def keyPressed(app, event):
         app.makeSquare = True
     
 
-
 def doResponse(app):
     if not app.userIsDrawing:
         if not app.firstMove:
             if (app.newResponse.alreadyDrawn == False):
                 ad.pendown()
                 if isinstance(app.strokes[-1], Line):
-                    if (isClosedShape(app.strokes[-1])):
-                        for coord in range(len(app.transformed)-1):
-                            if coord == (len(app.transformed)):
-                                app.newResponse.alreadyDrawn = True
-                                ad.penup()
-                            else:
-                                if (coord % 2 != 0):
-                                    x, y = app.transformed[coord]
-                                    ad.moveto(x, y)
-                                x, y = app.transformed[coord]
-                                ad.lineto(x, y)
-
 
                     if (app.newResponse.responseId == 1):
-                        #why is this not working, should not loop over for
-                        #the second time
-                        for coord in range(len(app.transformed)-1):
+                        #fill shape
+                        rows,cols=len(app.transformed),len(app.transformed[0])
+                        for row in range(rows):
+                            draw = False #substitute with moveto
+                            count = 0
+                            for col in range(cols):
+                                if (isinstance(app.transformed[row][col], 
+                                                                    tuple)):
+                                    count+=1
+                                    if (count % 2 == 0):
+                                        draw = False #substitute with moveto
+                                    draw = True #substitute with lineto
+
+                    if (app.newResponse.responseId == 2):
+                        #dash line
+                        for coord in range(len(app.transformed)):
                             if coord == (len(app.transformed)):
                                 app.newResponse.alreadyDrawn = True
-                                ad.penup()
                             else:
                                 if (coord % 2 != 0):
                                     x, y = app.transformed[coord]
                                     ad.moveto(x, y)
-                                x, y = app.transformed[coord]
-                                ad.lineto(x, y)
+                                else:
+                                    x, y = app.transformed[coord]
+                                    ad.lineto(x, y)
 
-                    for coord in range(len(app.transformed)):
-                        if coord == len(app.transformed):
-                            ad.penup()
-                            continue
-                        x, y = app.transformed[coord]
-                        ad.lineto(x, y)
-                        app.newResponse.alreadyDrawn = True
+                    if (app.newResponse.responseId == 0):
+                        #mirror
+                        for coord in range(len(app.transformed)):
+                            if coord == len(app.transformed):
+                                ad.penup()
+                                continue
+                            x, y = app.transformed[coord]
+                            ad.lineto(x, y)
+                            
+                    app.newResponse.alreadyDrawn = True
+                    ad.penup()
 
                 elif isinstance(app.strokes[-1], Square):
                     for coord in range(len(app.transformed)):
@@ -305,9 +310,10 @@ def doResponse(app):
 ############################################################################
 # responseIds = {
 #             0: mirror,
-#             1: dashedLine,
-#             2: scribblyLine,
-#             3: jaggedScribble,
+#             1: filledShape,
+#             2: dashedLine,
+#             3: scribblyLine,
+#             4: jaggedScribble,
 #         }
 # def randNum(responseIds):
 #     numResponses = len(responseIds)

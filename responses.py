@@ -3,13 +3,13 @@ import math, random
 def getAllxValues(originalLine):
     xValues = [ ]
     for coords in originalLine:
-        xValues.append(originalLine[coords[0]])
+        xValues.append(coords[0])
     return xValues
 
 def getAllyValues(originalLine):
     yValues = [ ]
     for coords in originalLine:
-        yValues.append(originalLine[coords[1]])
+        yValues.append(coords[1])
     return yValues
 
 def findBounds(originalLine):
@@ -23,7 +23,7 @@ def findBounds(originalLine):
 def distanceHelper(lastPoint, currPoint):
     x1, y1 = lastPoint #do i have to do lastPoint[0], lastPoint[1]?
     x2, y2 = currPoint #do i have to do currPoint[0], currPoint[1]?
-    return math.sqrt( ((x1-x2)**2)((y1-y2)**2) )
+    return math.sqrt( ((x1-x2)**2)+((y1-y2)**2) )
 
 def avgDistBtwnPoints(originalLine):
     oldAvg = 0
@@ -59,11 +59,6 @@ def touchingShape(originalLine):
             if  pointEqualtoPoint(row, col, originalLine):
                 touchingShape = True
 
-def isOdd(num):
-    if num % 2 == 0:
-        return False
-    return True
-
 #maybe move these two into the response class?
 
 # Used http://paulbourke.net/geometry/pointlineplane/ for calculating the 
@@ -77,59 +72,20 @@ def getIntersection(a1, a2, b1, b2):
 
     #lines have to have more than 0 length
     if ((x1 == x2 and y1 == y2) or (x3==x4 and y3 == y4)):
-        return [ None ]
+        return  None 
     #parallel
     if (denom == 0):
-        return [ None ]
+        return  None 
 
     uA = ((x4-x3)*(y1-y3)-(y4-y3)*(x1-x3)) / denom
     uB = ((x1-x3)*(y3-y4)-(y1-y3)*(x3-x4)) / denom
 
     if (uA < 0 or uA > 1 or uB < 0 or uB > 1):
-        return [ None ]
+        return  None 
 
     x = x1 + uA * (x2 - x1)
     y = y1 + uA * (y2 - y1)
-    return [ (x, y) ]
-
-# def allIntersections():
-#     intersections = [ ]
-#     total = len(originalLine)
-#     endpoint2 = total - 1
-#     minX, minY, maxX, maxY = findBounds(originalLine)
-#     for x in range(minX, maxX):
-#         for y in range(minY, maxY):
-#             for endpoint1 in range(originalLine):
-#                 intersections.append(getIntersection(x, y, originalLine[endpoint1], originalLine[endpoint2]))
-#     return intersections
-
-
-
-
-
-
-
-# def isPointInside(p, a1, a2, b1, b2):
-#     if (p == getIntersection(a1, a2, b1, b2)):
-#         return True
-#     return False
-    
-# def allPointsInside(p, shape):
-#     total = len(shape)
-#     endpoint2 = total - 1
-#     count = 0
-#     for endpoint1 in shape:
-#         if (isPointInside(p, shape[endpoint1], shape[endpoint2])):
-#             count+=1
-#     if isOdd(count):
-#         return True
-#     return False
-    
-                
-
-
-
-
+    return  (x, y) 
 
 
 
@@ -185,7 +141,8 @@ def getIntersection(a1, a2, b1, b2):
 class Response(object):
     def __init__(self, responseId, originalStroke):
         self.originalStroke = originalStroke
-        self.responseId = responseId
+        # self.responseId = responseId
+        self.responseId = 2
         self.alreadyDrawn = False
 
     def __repr__(self):
@@ -219,13 +176,16 @@ class Response(object):
 
     def fillIntersections(self):
         intersections = [ ]
+        newRow = [ ]
         total = len(self.originalStroke)
         endpt2 = total - 1
         minX, minY, maxX, maxY = findBounds(self.originalStroke)
         for x in range(minX, maxX):
+            newRow = [ ]
+            intersections.append(newRow)
             for y in range(minY, maxY):
                 for endpt1 in range(self.originalStroke):
-                    intersections.append(getIntersection(x, y, 
+                    newRow.append(getIntersection(x, y, 
                     self.originalStroke[endpt1], self.originalStroke[endpt2]))
         return intersections
 
