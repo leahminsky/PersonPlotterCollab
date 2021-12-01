@@ -19,7 +19,7 @@ $ python axicli -m align
 3. Physically move AxiDraw to home position (0, 0) if not already there
 4. In terminal type:
 ```
-$ python /path/to/folder/src/main.py
+$ python /path/to/folder/main.py
 ```
 **Video**
 
